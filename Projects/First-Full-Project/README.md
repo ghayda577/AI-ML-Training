@@ -31,9 +31,9 @@ The objective of this project is to:
 
 ## Dataset
 
-The project uses a cardiac-related dataset containing patient health and clinical information.
+The project uses a public cardiac-related dataset containing patient health and clinical information.
 
-The dataset includes features such as:
+The dataset contains 918 patient records and includes the following features:
 
 * Age
 * Sex
@@ -83,6 +83,8 @@ The dataset is checked for data quality issues, including:
 * Potential outliers
 * Numerical and categorical feature preparation
 
+Invalid numerical values are identified and handled as part of the data preparation process.
+
 ---
 
 ## 3. Exploratory Data Analysis (EDA)
@@ -100,15 +102,24 @@ The analysis includes:
 * Correlation analysis
 * Data quality observations
 
+The target distribution is also analyzed to understand the balance between the two heart disease classes.
+
 ---
 
 ## 4. Feature Engineering
 
-Feature Engineering is applied based on insights obtained from the dataset analysis.
+Feature Engineering is applied based on insights obtained from the EDA.
 
-The impact of the engineered feature is evaluated by comparing model performance before and after adding it.
+Two engineered features are evaluated:
 
-The feature is retained in the final workflow after evaluating its contribution to model performance.
+* `AgeGroup` — groups patients into meaningful age categories.
+* `health_risk_count` — combines selected health-related risk factors into a single feature.
+
+The engineered features are evaluated using five-fold cross-validation with F1-score.
+
+The results showed that `health_risk_count` slightly improved the cross-validated F1-score, while `AgeGroup` did not improve model performance.
+
+Therefore, `health_risk_count` was retained in the final workflow and `AgeGroup` was excluded.
 
 ---
 
@@ -141,15 +152,17 @@ The preprocessing workflow includes:
 
 ### Numerical Features
 
-* Missing value imputation
-* Feature scaling
+* Missing value imputation using the median
+* Feature scaling using StandardScaler
 
 ### Categorical Features
 
-* Missing value handling
+* Missing value handling using the most frequent category
 * One-Hot Encoding
 
 A `ColumnTransformer` is used to apply the appropriate preprocessing steps to each type of feature.
+
+The preprocessing steps are included inside Scikit-learn Pipelines to ensure that transformations are learned only from the training data and to help prevent data leakage during cross-validation.
 
 ---
 
@@ -157,53 +170,78 @@ A `ColumnTransformer` is used to apply the appropriate preprocessing steps to ea
 
 Logistic Regression is used as the baseline classification model.
 
-The baseline model provides an initial performance reference for evaluating other approaches.
+The baseline model provides an initial performance reference for evaluating the additional Random Forest model.
 
 ---
 
 ## 9. Stratified Cross-Validation
 
-Stratified Cross-Validation is used to evaluate model performance across multiple folds.
+Five-fold Stratified Cross-Validation is used to evaluate model performance across multiple folds.
 
 Stratification helps maintain a similar distribution of the `HeartDisease` classes in each fold, providing a more reliable evaluation of model performance.
+
+The same cross-validation strategy is used for both Logistic Regression and Random Forest to ensure a consistent comparison.
 
 ---
 
 ## 10. Baseline Model Evaluation
 
-The baseline model is evaluated using classification metrics to establish its initial performance.
+The Logistic Regression baseline is evaluated using multiple classification metrics, including:
 
-The evaluation helps provide a reference point for comparison with the additional model.
+* Accuracy
+* Precision
+* Recall
+* F1-Score
+* ROC-AUC
+
+These results provide a reference point for comparison with the Random Forest model.
 
 ---
 
 ## 11. Random Forest Model
 
-A Random Forest Classifier is trained as an additional model and compared with the Logistic Regression baseline.
+A Random Forest Classifier is trained as an additional classification model.
 
-Both models are evaluated using a consistent methodology.
+The Random Forest model is evaluated using the same training data, preprocessing steps, cross-validation strategy, and evaluation metrics used for Logistic Regression.
+
+This provides a fair comparison between the two models.
 
 ---
 
 ## 12. Model Comparison
 
-The performance of Logistic Regression and Random Forest is compared based on the selected evaluation metrics and cross-validation results.
+The performance of Logistic Regression and Random Forest is compared using the mean results from five-fold Stratified Cross-Validation.
 
-This comparison helps identify the better-performing approach for the dataset.
+The comparison considers:
+
+* Accuracy
+* Precision
+* Recall
+* F1-Score
+* ROC-AUC
+
+Random Forest was selected as the stronger comparison model based on the cross-validation results.
 
 ---
 
 ## 13. Feature Engineering Impact
 
-The impact of the engineered feature is evaluated by comparing model performance before and after adding the feature.
+The impact of the engineered features is evaluated using the same Random Forest configuration, preprocessing steps, five-fold cross-validation strategy, and F1-score.
 
-This step helps determine whether the feature provides useful information for the classification task.
+The results were:
+
+* Original Features: F1 = 0.8757
+* Original + `AgeGroup`: F1 = 0.8725
+* Original + `health_risk_count`: F1 = 0.8775
+* Original + Both: F1 = 0.8750
+
+Based on these results, `health_risk_count` was retained because it achieved the highest cross-validated F1-score, while `AgeGroup` was excluded because it reduced model performance.
 
 ---
 
 ## 14. Final Pipeline
 
-A final Scikit-learn Pipeline is created using the selected features, preprocessing steps, and model.
+A final Scikit-learn Pipeline is created using the selected features, preprocessing steps, and Random Forest model.
 
 The Pipeline combines preprocessing and model training into a single reproducible workflow.
 
@@ -213,25 +251,39 @@ This helps prevent inconsistencies between training and evaluation and makes the
 
 ## 15. Hyperparameter Tuning
 
-GridSearchCV is used to search for suitable hyperparameter combinations for the selected model.
+GridSearchCV is used to search for suitable hyperparameter combinations for the Random Forest model.
 
-The tuning process uses cross-validation to evaluate different parameter combinations and select the best-performing configuration.
+The tuning process uses five-fold Stratified Cross-Validation and evaluates different combinations of:
+
+* `n_estimators`
+* `max_depth`
+* `min_samples_split`
+* `min_samples_leaf`
+
+The test set remains completely unseen during feature selection, cross-validation, and hyperparameter tuning.
 
 ---
 
 ## 16. Best Model Selection
 
-The best model configuration is selected based on the results of model comparison and hyperparameter tuning.
+The best Random Forest configuration identified by GridSearchCV is selected based on cross-validated F1-score.
 
-The selected model is then used for final evaluation.
+The selected configuration is then used for the final evaluation on the held-out test set.
 
 ---
 
 ## 17. Final Test Evaluation
 
-The final model is evaluated on the untouched test set.
+After completing feature selection, cross-validation, and hyperparameter tuning, the final Random Forest model is evaluated on the untouched test set.
 
-This provides an estimate of how well the selected model generalizes to unseen data.
+The test set was not used during:
+
+* Model training
+* Feature selection
+* Cross-validation
+* Hyperparameter tuning
+
+This provides an unbiased estimate of the selected model's performance on unseen data.
 
 ---
 
@@ -245,11 +297,20 @@ The final model is evaluated using:
 * F1-Score
 * ROC-AUC
 
+These metrics provide different perspectives on model performance and are used together rather than relying on accuracy alone.
+
 ---
 
 ## 19. Confusion Matrix and Classification Report
 
 A confusion matrix is used to visualize the model predictions and errors.
+
+It includes:
+
+* True Negatives (TN)
+* False Positives (FP)
+* False Negatives (FN)
+* True Positives (TP)
 
 The Classification Report provides a detailed summary of:
 
@@ -258,7 +319,30 @@ The Classification Report provides a detailed summary of:
 * F1-Score
 * Support
 
-The results are interpreted to better understand the strengths and limitations of the final model.
+False negatives are particularly important to analyze because they represent heart disease cases that were incorrectly classified as negative.
+
+---
+
+# Final Results
+
+The final Random Forest model achieved the following performance on the unseen test set:
+
+| Metric | Score |
+|---|---:|
+| Accuracy | 90.76% |
+| Precision | 89.72% |
+| Recall | 94.12% |
+| F1-Score | 91.87% |
+| ROC-AUC | 93.79% |
+
+The confusion matrix showed:
+
+* True Negatives (TN): 71
+* False Positives (FP): 11
+* False Negatives (FN): 6
+* True Positives (TP): 94
+
+The high Recall of 94.12% for the Heart Disease class indicates that the model successfully detected most of the positive cases in the test set.
 
 ---
 
@@ -266,11 +350,11 @@ The results are interpreted to better understand the strengths and limitations o
 
 ### Logistic Regression
 
-Used as the baseline classification model.
+Used as the baseline classification model and reference point for model comparison.
 
 ### Random Forest Classifier
 
-Used as the comparison model and further optimized using hyperparameter tuning.
+Used as the comparison model and further optimized using GridSearchCV.
 
 ---
 
@@ -290,13 +374,13 @@ This project was developed using:
 
 # Key Findings
 
-The project analyzes cardiac patient data to identify patterns related to the presence of heart disease.
+The analysis identified meaningful relationships between patient characteristics and the presence of heart disease.
 
-The workflow evaluates the impact of feature engineering and compares Logistic Regression with Random Forest using consistent evaluation methods.
+The machine learning experiments showed that Random Forest provided stronger performance than the Logistic Regression baseline based on the cross-validation results.
 
-The final model is selected after model comparison, cross-validation, feature engineering evaluation, and hyperparameter tuning.
+Feature Engineering was also evaluated systematically. The `health_risk_count` feature slightly improved the cross-validated F1-score and was therefore retained in the final workflow, while `AgeGroup` was excluded because it did not improve performance.
 
-The selected model is then evaluated on an untouched test set to estimate its generalization performance.
+After hyperparameter tuning, the final Random Forest model achieved strong performance on the unseen test set, with a Recall of 94.12%, F1-Score of 91.87%, and ROC-AUC of 93.79%.
 
 ---
 
@@ -304,6 +388,7 @@ The selected model is then evaluated on an untouched test set to estimate its ge
 
 * The analysis is limited to the available dataset and its features.
 * Model performance may vary when applied to different datasets or populations.
+* The dataset may not represent all patient populations or real-world clinical settings.
 * The project is intended for educational and machine learning analysis purposes.
 * The model should not be used as a substitute for professional medical diagnosis or treatment.
 
@@ -321,4 +406,47 @@ The project is designed to run in a reproducible Python environment using the li
 
 ---
 
+# How to Run
 
+1. Clone or download the project repository.
+2. Create and activate a Python virtual environment.
+3. Install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Open Jupyter Notebook:
+
+```bash
+jupyter notebook
+```
+
+5. Open the project notebook.
+6. Run the notebook from top to bottom.
+
+---
+
+# Project Structure
+
+```text
+Cardiac-Patient-Monitoring-System/
+│
+├── data/
+│   └── heart.csv
+│
+├── notebooks/
+│   └── project.ipynb
+│
+├── README.md
+├── requirements.txt
+└── .gitignore
+```
+
+---
+
+# Disclaimer
+
+This project is developed for educational purposes as part of an AI and Machine Learning training track.
+
+It demonstrates machine learning techniques for analyzing cardiac-related data and does not provide medical diagnosis, treatment recommendations, or clinical decision-making.
